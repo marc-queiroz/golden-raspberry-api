@@ -59,6 +59,3 @@ wheels/
 
 # Diretório de documentação gerada automaticamente
 docs/_build/
-
-# Arquivos CSV específicos do projeto (se desejar mantê-los privados)
-Movielist.csv

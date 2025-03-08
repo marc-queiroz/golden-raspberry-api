@@ -158,12 +158,26 @@ def get_award_intervals(db: Session = Depends(get_db)):
 async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
     contents = await file.read()
     decoded = contents.decode("utf-8")
+    lines = decoded.splitlines()
 
-    dialect = csv.Sniffer().sniff(decoded.splitlines()[0])
-    reader = csv.DictReader(decoded.splitlines(), delimiter=dialect.delimiter)
+    if not lines:
+        raise HTTPException(status_code=400, detail="Arquivo CSV vazio.")
+
+    # Detecta o delimitador utilizando o csv.Sniffer
+    dialect = csv.Sniffer().sniff(lines[0])
+
+    # Extrai e valida o header
+    header_cols = [col.strip() for col in lines[0].split(dialect.delimiter)]
+    expected_cols = ["year", "title", "studios", "producers", "winner"]
+    if header_cols != expected_cols:
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV header inválido. Esperado: {';'.join(expected_cols)}",
+        )
+
+    reader = csv.DictReader(lines, delimiter=dialect.delimiter)
 
     for row in reader:
-        # Lógica para inserir dados no banco
         db.add(
             Movie(
                 year=int(row["year"]),
