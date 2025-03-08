@@ -1,0 +1,64 @@
+# Ambiente virtual
+venv/
+.venv/
+env/
+.virtualenv/
+
+# Arquivos Python compilados
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Arquivos temporários do sistema operacional
+*.DS_Store
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Logs
+*.log
+
+# Arquivos de cobertura de testes
+.coverage
+coverage.xml
+htmlcov/
+.coverage.*
+
+# Distribuições / pacotes Python
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+var/
+wheels/
+*.egg
+
+# Arquivos de configuração locais
+.env
+*.ini
+*.cfg
+*.sqlite
+*.db
+
+# Arquivos do IDE (VSCode, PyCharm, etc.)
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Arquivos Jupyter notebook
+.ipynb_checkpoints
+
+# Arquivos de cache do pytest
+.pytest_cache/
+
+# Arquivos mypy
+.mypy_cache/
+
+# Diretório de documentação gerada automaticamente
+docs/_build/
+
+# Arquivos CSV específicos do projeto (se desejar mantê-los privados)
+Movielist.csv
