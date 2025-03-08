@@ -1,14 +1,12 @@
-from fastapi import FastAPI, HTTPException
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, select
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import StaticPool
 import csv
 import logging
 
-# Configuração básica do logging
-import logging
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.pool import StaticPool
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Configuração do banco de dados em memória
@@ -18,6 +16,14 @@ engine = create_engine(
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # Modelo Movie do banco de dados
@@ -37,50 +43,70 @@ Base.metadata.create_all(bind=engine)
 # Iniciar FastAPI
 app = FastAPI()
 
-import logging
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 
 # Função para carregar dados do CSV
-def load_movies():
-    db = SessionLocal()
-    with open("./Movielist.csv", encoding="utf-8") as file:
-        reader = csv.DictReader(file, delimiter=";")  # Corrigido para ';'
-        logger.debug(f"Colunas encontradas: {reader.fieldnames}")
+def load_movies(db: Session):
+    try:
+        with open("./Movielist.csv", encoding="utf-8") as file:
+            # Lê todo o conteúdo do arquivo
+            content = file.read()
+            lines = content.splitlines()
 
-        for row in reader:
-            try:
-                movie = Movie(
-                    year=int(row.get("year", 0)),
-                    title=row.get("title", "").strip(),
-                    studios=row.get("studios", "").strip(),
-                    producers=row.get("producers", "").strip(),
-                    winner=(
-                        "yes"
-                        if row.get("winner", "").strip().lower() == "yes"
-                        else "no"
-                    ),
+            # Verifica se o arquivo está vazio
+            if not lines:
+                logger.warning("Arquivo CSV vazio. Nenhum dado será carregado.")
+                return
+
+            # Validação do cabeçalho
+            header_line = lines[0].strip()
+            expected_header = "year;title;studios;producers;winner"
+            if header_line != expected_header:
+                raise ValueError(
+                    f"Cabeçalho inválido. Esperado: '{expected_header}', encontrado: '{header_line}'"
                 )
-                logger.debug(
-                    f"Inserindo filme: {movie.title} ({movie.year}) - Vencedor: {movie.winner}"
-                )
-                db.add(movie)
-            except Exception as e:
-                logger.error(f"Erro ao inserir filme {row}: {e}")
-    db.commit()
-    db.close()
+
+            reader = csv.DictReader(lines, delimiter=";")
+
+            logger.debug(f"Colunas detectadas: {reader.fieldnames}")
+
+            for row in reader:
+                try:
+                    movie = Movie(
+                        year=int(row.get("year", 0)),
+                        title=row.get("title", "").strip(),
+                        studios=row.get("studios", "").strip(),
+                        producers=row.get("producers", "").strip(),
+                        winner=(
+                            "yes" if row["winner"].strip().lower() == "yes" else "no"
+                        ),
+                    )
+                    logger.debug(f"Filme inserido: {movie.title} ({movie.year})")
+                    db.add(movie)
+                except Exception as e:
+                    logger.error(f"Erro na linha {row}: {str(e)}")
+
+            db.commit()
+
+    except FileNotFoundError:
+        logger.error("Arquivo Movielist.csv não encontrado.")
+        raise
+    except ValueError as ve:
+        logger.error(f"Erro de validação: {str(ve)}")
+        db.rollback()
+        raise
+    except Exception as e:
+        logger.error(f"Falha crítica ao carregar o CSV: {str(e)}")
+        db.rollback()
+        raise
 
 
 # Carregar os dados ao iniciar o servidor
-load_movies()
+with SessionLocal() as db:
+    load_movies(db)
 
 
 @app.get("/awards/intervals")
-def get_award_intervals():
-    db = SessionLocal()
-
+def get_award_intervals(db: Session = Depends(get_db)):
     movies = db.query(Movie).filter(Movie.winner == "yes").all()
 
     db.close()
@@ -126,3 +152,27 @@ def get_award_intervals():
     ]
 
     return {"min": min_producers, "max": max_producers}
+
+
+@app.post("/upload-csv/")
+async def upload_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    contents = await file.read()
+    decoded = contents.decode("utf-8")
+
+    dialect = csv.Sniffer().sniff(decoded.splitlines()[0])
+    reader = csv.DictReader(decoded.splitlines(), delimiter=dialect.delimiter)
+
+    for row in reader:
+        # Lógica para inserir dados no banco
+        db.add(
+            Movie(
+                year=int(row["year"]),
+                title=row["title"],
+                studios=row["studios"],
+                producers=row["producers"],
+                winner="yes" if row["winner"].lower() == "yes" else "no",
+            )
+        )
+
+    db.commit()
+    return {"message": "CSV carregado com sucesso!"}
