@@ -2,9 +2,9 @@
 
 ## Descrição
 
-Este projeto consiste em uma API RESTful desenvolvida com **FastAPI**, que permite consultar os intervalos entre prêmios consecutivos dos vencedores da categoria **Pior Filme** do **Golden Raspberry Awards**.
+Este projeto consiste em uma API RESTful desenvolvida com **FastAPI** que permite consultar os intervalos entre prêmios consecutivos dos vencedores da categoria **Pior Filme** do **Golden Raspberry Awards**.
 
-A API lê um arquivo CSV contendo os filmes indicados e vencedores e armazena os dados em um banco de dados **SQLite em memória**.
+A API lê um arquivo CSV contendo os filmes indicados e vencedores, armazenando os dados em um banco de dados **SQLite em memória**. Ao iniciar a aplicação, os dados do arquivo `Movielist.csv` são carregados automaticamente. Além disso, a API disponibiliza um endpoint para upload de novos arquivos CSV, com validação do cabeçalho, independentemente do delimitador utilizado.
 
 ## Tecnologias Utilizadas
 
@@ -18,8 +18,8 @@ A API lê um arquivo CSV contendo os filmes indicados e vencedores e armazena os
 ### 1. Clonar o repositório
 
 ```bash
- git clone https://github.com/marc-queiroz/golden-raspberry-api.git
- cd golden-raspberry-api
+git clone https://github.com/marc-queiroz/golden-raspberry-api.git
+cd golden-raspberry-api
 ```
 
 ### 2. Criar um ambiente virtual e instalar dependências
@@ -42,7 +42,7 @@ A API estará disponível em `http://127.0.0.1:8000`.
 
 ### `GET /awards/intervals`
 
-Retorna os produtores com o **menor** e **maior** intervalo entre prêmios consecutivos.
+Retorna os produtores com o **menor** e o **maior** intervalo entre prêmios consecutivos.
 
 Exemplo de acesso usando curl:
 
@@ -73,6 +73,23 @@ curl -X GET "http://127.0.0.1:8000/awards/intervals" -H "accept: application/jso
 }
 ```
 
+### `POST /upload-csv/`
+
+Endpoint para upload de um arquivo CSV que permite atualizar os dados da base.
+**Observação:** O arquivo CSV deve conter as seguintes colunas (no cabeçalho), independentemente do delimitador utilizado:
+
+```
+year;title;studios;producers;winner
+```
+
+Exemplo de acesso usando curl:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/upload-csv/" \
+  -H "accept: application/json" \
+  -F "file=@caminho/para/seu/arquivo.csv"
+```
+
 ## Como Rodar os Testes de Integração
 
 ```bash
@@ -89,7 +106,7 @@ Isso garantirá que os endpoints da API estejam funcionando corretamente com bas
 ├── test_main.py      # Testes de integração
 ├── requirements.txt  # Dependências do projeto
 ├── README.md         # Documentação do projeto
-└── Movielist.csv     # Arquivo de entrada com os dados dos filmes
+├── Movielist.csv     # Arquivo CSV de exemplo com os dados dos filmes
 ```
 
 ## Autor
